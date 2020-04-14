@@ -1,0 +1,4 @@
+GS3/
+play.sh
+*.log
+scripts/local*.php

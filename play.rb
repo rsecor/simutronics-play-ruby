@@ -76,6 +76,7 @@ puts "\e[H\e[2J"
 hashpass = '' ;
 
 require 'socket'
+
 fp = TCPSocket.new 'eaccess.play.net', 7900
 fp.send "K\n", 0
 hashkey = fp.gets
@@ -129,7 +130,7 @@ if @game_list.size == 0
 end
 until not game_code.empty? do
   # Clear screen -- where available on platform
-  # puts "\e[H\e[2J"
+  puts "\e[H\e[2J"
   game_no = 0
   @game_list.each { |(local_game_code,local_game_name)|
     game_no += 1
@@ -171,7 +172,7 @@ if @character_list.size == 0
 end
 until not character_code.empty? do
   # Clear screen -- where available on platform
-  # puts "\e[H\e[2J"
+  puts "\e[H\e[2J"
   character_no = 0
   @character_list.each { |(local_character_code,local_character_name)|
     character_no += 1
@@ -185,6 +186,7 @@ until not character_code.empty? do
   end
 end
 
+puts "\e[H\e[2J"
 puts "Entering #{game_name} as #{character_name}\n"
 
 dir[ 'character' ] = dir[ 'base' ] + "/" + game_code + "/" + character_name
@@ -204,7 +206,6 @@ if not File.directory?(dir [ 'character' ])
         exit
 end
 
-puts "L\t#{character_code}\tSTORM\n"
 fp.send "L\t#{character_code}\tSTORM\n", 0
 launch = fp.gets.strip.split("\t")
 
@@ -247,7 +248,6 @@ launch.each { |line|
   end
   sal_file += "#{line}\n" ;
 }
-puts sal_file
 sal_out = dir [ 'character' ] + "/connect.sal"
 File.write( sal_out , sal_file )
 fp.close
@@ -262,24 +262,30 @@ if @game[ 'port' ].empty?
   exit
 end
 
-#### CONVERTED TO HERE
+# Connect to game server...
+fp = TCPSocket.new @game [ 'host' ] , @game [ 'port' ]
+fp.send "#{@game [ 'key' ]}\n" , 0 
+buf = fp.gets.strip
 
-# $socket = socket_create ( AF_INET , SOCK_STREAM , SOL_TCP ) ;
-# if ( $socket === FALSE )
-# {
-# 	print "socket_create failure\n" ;
-# 	exit ;
-# }
-# 
-# $play = 'tcp://' . $game [ 'host' ] . ':' . $game [ 'port' ] ;
-# print "Connecting to " . $play . "\n" ;
-# $result = socket_connect ( $socket , $game [ 'host' ] , $game [ 'port' ] ) ;
-# if ( $result === FALSE )
-# {
-# 	print "socket_connect failure\n" ;
-# 	exit ;
-# }
-# 
+client_announce = '/FE:PLAYRB /VERSION:' + version
+if type == 'XML'
+  client_announce = "/FE:WIZARD /VERSION:1.0.1.22 /P:i386-mingw32 /XML\n"
+end
+fp.send "#{client_announce}\n" , 0 
+buf = fp.gets.strip
+
+wait = "<c>\r\n"
+fp.send "#{wait}\n" , 0
+sleep(1)
+fp.send "#{wait}\n" , 0
+
+# socket_set_nonblock ( $socket ) ;
+# stream_set_blocking ( STDIN , 0 ) ;
+
+@gameArrayLocal = {}
+@gameArrayLocal [ 'type' ] = type ;
+@gameArrayLocal [ 'game_code' ] = game_code ;
+
 # // autostart
 # $autostart_file = $dir [ 'character' ] . "/autostart.txt" ;
 # if ( file_exists ( $autostart_file ) )
@@ -317,39 +323,12 @@ end
 # 		}
 # 	}
 # }
-# 
-# socket_write ( $socket , $game [ 'key' ] , ( strlen ( $game [ 'key' ] ) ) )  ;
-# $buf = socket_read ( $socket , 2048 ) ;
-# print "================================================================================\n" ;
-# print $buf . "\n" ;
-# 
-# $client_announce = "/FE:JAHADEEM /VERSION:" . $version . "\n" ;
-# if ( $type == 'XML' )
-# {
-# 	$client_announce = "/FE:WIZARD /VERSION:1.0.1.22 /P:i386-mingw32 /XML\n" ;
-# }
-# socket_write ( $socket , $client_announce , strlen ( $client_announce ) ) ;
-# $buf = socket_read ( $socket , 2048 ) ;
-# print "================================================================================\n" ;
-# print $buf . "\n" ;
-# 
-# $wait = "<c>\r\n" ;
-# socket_write ( $socket , $wait , strlen ( $wait ) ) ;
-# sleep ( 1 ) ;
-# socket_write ( $socket , $wait , strlen ( $wait ) ) ;
-# 
-# socket_set_nonblock ( $socket ) ;
-# stream_set_blocking ( STDIN , 0 ) ;
-# 
-# $gameArray [ 'local' ] [ 'type' ] = $type ;
-# $gameArray [ 'local' ] [ 'game_code' ] = $game_code ;
-# 
-# $done_init = FALSE ;
-# 
-# $time_start = time ( ) ;
-# 
-# while ( TRUE )
-# {
+
+done_init = false
+time_start = Time.now.to_i
+
+while true
+  puts "hi"
 # 	if ( ( time ( ) - $time_start ) >= $time_out )
 # 	{
 # 		break 1 ;
@@ -385,7 +364,14 @@ end
 # 	}
 # 	else
 # 	{
-# 		$input_stream = fgetcsv ( STDIN ) ;
+
+##  input_stream = $stdin.gets.chomp
+#  input_stream = $stdin.read_nonblock(1024).chomp
+# PHP: 		$input_stream = fgetcsv ( STDIN ) ;
+#  single = input_stream.split(',')
+#  if single.size > 1
+#    puts single
+#  end
 # 		if ( is_array ( $input_stream ) )
 # 		{
 # 			print "--------------------------------------------------------------------------------\n" ;
@@ -507,6 +493,9 @@ end
 # 			}
 # 		}
 # 	}
+      if buf = fp.gets.strip
+        puts buf
+      end
 # 	if ( $buf = socket_read ( $socket , 65536 , PHP_BINARY_READ ) )
 # 	{
 # 		$time_start = time ( ) ;
@@ -586,8 +575,8 @@ end
 # 			$buf = '' ;
 # 		}
 # 	}
-# }
-# 
+  break 
+end
 
 fp.close
 exit
